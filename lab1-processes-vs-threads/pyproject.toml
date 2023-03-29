@@ -15,6 +15,7 @@ matplotlib = "^3.7.1"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"
+black = {version = "^23.3.0", allow-prereleases = true}
 
 [build-system]
 requires = ["poetry-core"]
