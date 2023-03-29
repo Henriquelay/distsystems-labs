@@ -207,7 +207,7 @@ def run(
 
     times = []
     print(
-        f"{func.__name__}\t|\t{parallels} units\t|\tsize {list_size}\t|\t{rounds} rounds"
+        f"{func.__name__:^20}{parallels:^20,} size {list_size:<20,} {rounds:>20,} rounds"
     )
 
     for round in range(rounds):
