@@ -11,7 +11,7 @@ def weighted_average(metrics):
     return results
 
 if __name__ == "__main__":
-    num_clients = 6
+    num_clients = 8
     strategy=fl.server.strategy.FedAvg(
                 fraction_fit=0.9,
                 fraction_evaluate=1,
@@ -22,9 +22,9 @@ if __name__ == "__main__":
                 ),
                 evaluate_metrics_aggregation_fn=weighted_average,
             )
-    fl.server.start_server(
+    history = fl.server.start_server(
         server_address="0.0.0.0:8080",
-        config=fl.server.ServerConfig(num_rounds=3),
+        config=fl.server.ServerConfig(num_rounds=40),
         strategy=strategy,
     )
-
+    print(history)

@@ -7,8 +7,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPool2D,Flatten,Dense
 from tensorflow.keras.optimizers import SGD
 import numpy as np
-import ray
-from matplotlib import pyplot as plt
 
 batch_size = 64
 epochs = 5
