@@ -4,11 +4,13 @@ version = "0.1.0"
 description = ""
 authors = ["Henriquelay <37563861+Henriquelay@users.noreply.github.com>"]
 readme = "README.md"
-packages = [{include = "lab2_aprendizado_federado"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
 flwr = {version = "1.3.0", extras = ["simulation"]}
+tensorflow = "=2.12.0"
+numpy = "=1.22.4"
+matplotlib = "=3.7.1"
 
 
 [tool.poetry.group.dev.dependencies]
