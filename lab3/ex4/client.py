@@ -49,7 +49,7 @@ def get_winner(stub) -> None:
     response = stub.getWinner(mine_grpc_pb2.transactionId(transactionId=transaction_id))
     if response.result == -1:
         print(f"Transação com ID {transaction_id} não encontrada.")
-    elif response.result == -2:
+    elif response.result == 0:
         print(f"A transação {transaction_id} não possui vencedor.")
     else:
         print(f"ID do cliente vencedor da transação {transaction_id}: {response.result}")
