@@ -1,0 +1,22 @@
+syntax="proto3";
+
+package main;
+
+// Result from an operation
+message IntResult {
+    int32 result = 1;
+}
+
+// Inputs to the operation
+message Operands {
+    int32 left = 1;
+    int32 right = 2;
+}
+
+// Calculator service definition
+service Calc {
+    // Add two integers
+    rpc add(Operands) returns (IntResult);
+    // Subtracts right from left
+    rpc sub(Operands) returns (IntResult);
+}
