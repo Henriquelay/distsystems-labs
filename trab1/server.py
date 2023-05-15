@@ -51,7 +51,7 @@ class Client:
     def modelEvaluation(self, aggregated_weights):
         try:
             aggregated_weights_bytes = [
-                weight.tobytes() for weight in aggregated_weights
+                np.array(weight).tobytes() for weight in aggregated_weights
             ]
 
             request = self.stub.ModelEvaluation(
@@ -120,11 +120,13 @@ class FederatedLearningServer(fedlearn_grpc_pb2_grpc.apiServicer):
                 average_accuracy = np.mean(results)
 
                 if average_accuracy >= self.accuracy_threshold:
+                    print("Accuracy threshold reached.")
                     break
 
                 self.current_round += 1
 
                 if self.current_round >= self.max_rounds:
+                    print("Max rounds reached.")
                     break
 
             time.sleep(0.1)
@@ -143,7 +145,7 @@ class FederatedLearningServer(fedlearn_grpc_pb2_grpc.apiServicer):
         for thread in threads:
             thread.join()
 
-        return [n for _, n in results]
+        return results
 
     def clients_work_now(self, clients):
         threads = []
@@ -175,17 +177,7 @@ class FederatedLearningServer(fedlearn_grpc_pb2_grpc.apiServicer):
         results.append(accuracy)
 
     def federated_average(self, weights, num_samples):
-        total_samples = sum(num_samples)
-        num_arrays = len(weights[0])
-        averaged_weights = []
-
-        for i in range(num_arrays):
-            weighted_sum = np.zeros_like(weights[0][i])
-            for j, w in enumerate(weights):
-                weighted_sum += w[i] * num_samples[j]
-            averaged_weights.append(weighted_sum / total_samples)
-
-        return averaged_weights, total_samples
+        return weights[0]
 
     def has_sufficient_clients(self) -> bool:
         return len(self.clients) >= self.min_clients
