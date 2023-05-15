@@ -50,9 +50,7 @@ class Client:
 
     def modelEvaluation(self, aggregated_weights):
         try:
-            aggregated_weights_bytes = [
-                np.array(weight).tobytes() for weight in aggregated_weights
-            ]
+            aggregated_weights_bytes = [weight.flatten().tobytes() for weight in aggregated_weights]
 
             request = self.stub.ModelEvaluation(
                 fedlearn_grpc_pb2.ModelEvaluationRequest(

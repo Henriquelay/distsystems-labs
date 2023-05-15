@@ -36,6 +36,8 @@ class FederatedLearningClient(fedlearn_grpc_pb2_grpc.clientServicer):
         self.current_round = 0
         self.weights = np.array([])
 
+        self.original_weight_shape = None
+
         self.dataset: tuple = tf.keras.datasets.mnist.load_data()
         self.x_train, self.y_train = self.dataset[0]
         self.x_test, self.y_test = self.dataset[1]
@@ -75,6 +77,8 @@ class FederatedLearningClient(fedlearn_grpc_pb2_grpc.clientServicer):
 
         weights_list = self.model.get_weights()
 
+        self.original_weight_shape = weights_list[0].shape
+
         weights_bytes_list = [np.array(weights).tobytes() for weights in weights_list]
 
         num_samples = self.x_train[self.start : self.end].shape[0]
@@ -86,11 +90,14 @@ class FederatedLearningClient(fedlearn_grpc_pb2_grpc.clientServicer):
     def ModelEvaluation(self, request, context):
         aggregated_weights = request.aggregated_weights
 
+        original_shape = self.original_weight_shape
+
         received_weights_list = []
         for weights_bytes in aggregated_weights:
             weights_array = np.frombuffer(weights_bytes, dtype=np.float32)
-            received_weights_list.append(weights_array)
-
+            reshaped_weights = weights_array.reshape(original_shape)
+            received_weights_list.append(reshaped_weights)
+        
 
         accuracy = self.evaluate(received_weights_list)
         print(f"Client {self.client_id} - Accuracy: {accuracy}")
