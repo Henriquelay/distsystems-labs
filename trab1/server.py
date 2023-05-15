@@ -177,7 +177,17 @@ class FederatedLearningServer(fedlearn_grpc_pb2_grpc.apiServicer):
         results.append(accuracy)
 
     def federated_average(self, weights, num_samples):
-        return weights[0]
+        total_samples = sum(num_samples)
+        num_arrays = len(weights[0])
+        averaged_weights = []
+
+        for i in range(num_arrays):
+            weighted_sum = np.zeros_like(weights[0][i])
+            for j, w in enumerate(weights):
+                weighted_sum += w[i] * num_samples[j]
+            averaged_weights.append(weighted_sum / total_samples)
+
+        return averaged_weights, total_samples
 
     def has_sufficient_clients(self) -> bool:
         return len(self.clients) >= self.min_clients

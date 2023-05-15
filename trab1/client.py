@@ -84,7 +84,7 @@ class FederatedLearningClient(fedlearn_grpc_pb2_grpc.clientServicer):
         )
 
     def ModelEvaluation(self, request, context):
-        aggregated_weights = request.weights
+        aggregated_weights = request.aggregated_weights
 
         received_weights_list = []
         for weights_bytes in aggregated_weights:
