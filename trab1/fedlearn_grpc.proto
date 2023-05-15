@@ -1,0 +1,45 @@
+syntax="proto3";
+
+package main;
+
+message ClientRegisterRequest {
+    string ip = 1;
+    string port = 2;
+    string client_id = 3;
+}
+
+message ClientRegisterResponse {
+    int32 confirmation_code = 1;
+    uint32 current_round = 2;
+}
+
+message TrainingStartRequest {
+    uint32 start = 1;
+    uint32 end = 2;
+    uint32 epochs = 3;
+}
+
+message TrainingStartResponse {
+    repeated bytes weights = 1;
+    uint32 num_samples = 2;
+}
+
+message ModelEvaluationRequest {
+    repeated bytes aggregated_weights = 1;
+}
+  
+message ModelEvaluationResponse {
+    float accuracy = 1;
+}
+
+message void {
+}
+
+service api {
+    rpc ClientRegister(ClientRegisterRequest) returns (ClientRegisterResponse) {}
+}
+
+service client {
+    rpc TrainingStart(TrainingStartRequest) returns (TrainingStartResponse) {}
+    rpc ModelEvaluation(ModelEvaluationRequest) returns (ModelEvaluationResponse) {}
+}
