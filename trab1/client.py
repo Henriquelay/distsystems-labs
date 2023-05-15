@@ -91,10 +91,7 @@ class FederatedLearningClient(fedlearn_grpc_pb2_grpc.clientServicer):
             weights_array = np.frombuffer(weights_bytes, dtype=np.float32)
             received_weights_list.append(weights_array)
 
-        self.x_test = np.frombuffer(request.test_data, dtype=np.uint32).reshape(
-            (-1, 28, 28)
-        )
-        self.y_test = np.frombuffer(request.test_labels, dtype=np.uint32)
+
         accuracy = self.evaluate(received_weights_list)
         print(f"Client {self.client_id} - Accuracy: {accuracy}")
         return fedlearn_grpc_pb2.ModelEvaluationResponse(accuracy=accuracy)
