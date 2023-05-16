@@ -32,14 +32,11 @@ message ModelEvaluationResponse {
     float accuracy = 1;
 }
 
-message void {
-}
-
 service api {
-    rpc ClientRegister(ClientRegisterRequest) returns (ClientRegisterResponse) {}
+    rpc ClientRegister(ClientRegisterRequest) returns (ClientRegisterResponse);
 }
 
 service client {
-    rpc TrainingStart(TrainingStartRequest) returns (TrainingStartResponse) {}
-    rpc ModelEvaluation(ModelEvaluationRequest) returns (ModelEvaluationResponse) {}
+    rpc TrainingStart(TrainingStartRequest) returns (TrainingStartResponse);
+    rpc ModelEvaluation(ModelEvaluationRequest) returns (ModelEvaluationResponse);
 }

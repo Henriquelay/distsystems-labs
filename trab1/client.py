@@ -2,8 +2,8 @@ from concurrent import futures
 from typing import List, Union, Tuple
 
 import argparse
-import fedlearn_grpc_pb2
-import fedlearn_grpc_pb2_grpc
+import fedlearn_grcp
+import fedlearn_grpc_binds
 import grpc
 import numpy as np
 import random
@@ -20,7 +20,7 @@ parser.add_argument("--port", type=str, default="50051")
 args = parser.parse_args()
 
 
-class FederatedLearningClient(fedlearn_grpc_pb2_grpc.clientServicer):
+class FederatedLearningClient(fedlearn_grpc_binds.clientServicer):
     def __init__(self, ip: str, port: int, client_id: str):
         self.ip = ip
         self.port = port
@@ -77,17 +77,20 @@ class FederatedLearningClient(fedlearn_grpc_pb2_grpc.clientServicer):
 
         weights_list = self.model.get_weights()
 
+        print(f"Client {self.client_id} - Weights: {weights_list}")
+
         self.original_weight_shape = weights_list[0].shape
 
         weights_bytes_list = [np.array(weights).tobytes() for weights in weights_list]
 
         num_samples = self.x_train[self.start : self.end].shape[0]
 
-        return fedlearn_grpc_pb2.TrainingStartResponse(
+        return fedlearn_grcp.TrainingStartResponse(
             weights=weights_bytes_list, num_samples=num_samples
         )
 
     def ModelEvaluation(self, request, context):
+        print("Received Evaluation Request")
         aggregated_weights = request.aggregated_weights
 
         original_shape = self.original_weight_shape
@@ -101,7 +104,7 @@ class FederatedLearningClient(fedlearn_grpc_pb2_grpc.clientServicer):
 
         accuracy = self.evaluate(received_weights_list)
         print(f"Client {self.client_id} - Accuracy: {accuracy}")
-        return fedlearn_grpc_pb2.ModelEvaluationResponse(accuracy=accuracy)
+        return fedlearn_grcp.ModelEvaluationResponse(accuracy=accuracy)
 
     def fit(self):
         self.model.fit(
@@ -146,7 +149,7 @@ def main() -> None:
     port = args.port
 
     with grpc.insecure_channel(server) as channel:
-        stub = fedlearn_grpc_pb2_grpc.apiStub(channel)
+        stub = fedlearn_grpc_binds.apiStub(channel)
         print(f"Client {client_id} connected to server {server}")
 
         client = FederatedLearningClient(address, port, client_id)
@@ -156,14 +159,14 @@ def main() -> None:
         ]
 
         clientGrpc = grpc.server(
-            futures.ThreadPoolExecutor(max_workers=1), options=options
+            futures.ThreadPoolExecutor(max_workers=2), options=options
         )
-        fedlearn_grpc_pb2_grpc.add_clientServicer_to_server(client, clientGrpc)
+        fedlearn_grpc_binds.add_clientServicer_to_server(client, clientGrpc)
         clientGrpc.add_insecure_port(f"{address}:{port}")
         clientGrpc.start()
 
         response = stub.ClientRegister(
-            fedlearn_grpc_pb2.ClientRegisterRequest(
+            fedlearn_grcp.ClientRegisterRequest(
                 ip=client.ip, port=client.port, client_id=client.client_id
             )
         )
@@ -184,4 +187,5 @@ def main() -> None:
         clientGrpc.wait_for_termination()
 
 
-main()
+if __name__ == "__main__":
+    main()
