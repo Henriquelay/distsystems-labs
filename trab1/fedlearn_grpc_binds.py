@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import fedlearn_grcp as fedlearn__grpc__pb2
+import fedlearn_grpc as fedlearn__grpc__pb2
 
 
 class apiStub(object):

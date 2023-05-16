@@ -1,7 +1,8 @@
 from concurrent import futures
 from typing import List, Union, Tuple
+import pickle
 
-import fedlearn_grcp
+import fedlearn_grpc
 import fedlearn_grpc_binds
 import grpc
 import numpy as np
@@ -30,9 +31,19 @@ class Client:
         channel = grpc.insecure_channel(self.ip + ":" + str(self.port))
         self.stub = fedlearn_grpc_binds.clientStub(channel)
 
+
+    def serialize_weights(self, weights):
+        serialized_weights = pickle.dumps(weights)
+        return serialized_weights
+
+    def deserialize_weights(self, serialized_weights):
+        weights = pickle.loads(serialized_weights)
+        return weights
+
+
     def trainingStart(self):
         request = self.stub.TrainingStart(
-            fedlearn_grcp.TrainingStartRequest(
+            fedlearn_grpc.TrainingStartRequest(
                 start=self.start,
                 end=self.end,
                 epochs=self.epochs,
@@ -41,35 +52,31 @@ class Client:
         response = self.stub.TrainingStart(request)
         weights_bytes_list = response.weights
 
-        received_weights_list = []
-        for weights_bytes in weights_bytes_list:
-            weights_array = np.frombuffer(weights_bytes, dtype=np.float32)
-            received_weights_list.append(weights_array)
+        received_weights_list = self.deserialize_weights(weights_bytes_list[0])
         
         # print("Received weights list: ", received_weights_list)
 
         return received_weights_list, response.num_samples
 
-    def modelEvaluation(self, weights: list[np.ndarray]):
+    def modelEvaluation(self, weights: List[np.ndarray]):
         try:
-            for i, weight in enumerate(weights):
-                print(f"Weight {i} type from client {self.client_id}: ", type(weight))
+            #for i, weight in enumerate(weights):
+            #    print(f"Weight {i} type from client {self.client_id}: ", type(weight))
                 # print("Weight: ", weight)
-                print(f"Weight {i} shape from client {self.client_id}: ", weight.shape)
-            aggregated_weights_bytes = weights[2].tobytes()
-            print("Aggregated weights bytes type: ", type(aggregated_weights_bytes))
+            #    print(f"Weight {i} shape from client {self.client_id}: ", weight.shape)
+            aggregated_weights_bytes = [self.serialize_weights(weights)]
 
             print("Sending evaluation request to client: ", self.client_id)
 
-            request = self.stub.ModelEvaluation(
-                    aggregated_weights_bytes
+            request = fedlearn_grpc.ModelEvaluationRequest(
+                    aggregated_weights=aggregated_weights_bytes
             )
 
             print("Received evaluation response from client: ", self.client_id)
 
             response = self.stub.ModelEvaluation(request)
 
-            return response
+            return response.accuracy
         except Exception as e:
             print(e)
             exit()
@@ -103,7 +110,7 @@ class FederatedLearningServer(fedlearn_grpc_binds.apiServicer):
         self.clients: List[Client] = []
         self.dataset: tuple = tf.keras.datasets.mnist.load_data()
         self.current_round: int = 0
-        self.rpc = fedlearn_grcp
+        self.rpc = fedlearn_grpc
         self.last_aggregated_weights = np.array([])
 
         self.main_thread = threading.Thread(target=self.train)
@@ -188,8 +195,11 @@ class FederatedLearningServer(fedlearn_grpc_binds.apiServicer):
         accuracy = client.modelEvaluation(weights)
         results.append(accuracy)
 
-    def federated_average(self, weights, num_samples):
-        return weights[0]
+
+    def federated_average(self, weights_list, num_samples_list):
+        weighted_average = np.average(weights_list, axis=0, weights=num_samples_list).astype(object)
+
+        return weighted_average
 
     def has_sufficient_clients(self) -> bool:
         return len(self.clients) >= self.min_clients
@@ -210,8 +220,8 @@ class FederatedLearningServer(fedlearn_grpc_binds.apiServicer):
         if len(self.clients) < self.per_round_clients:
             raise ValueError("There are not enough clients to choose from.")
 
-        # chosen_clients = random.sample(self.clients, self.per_round_clients)
-        return self.clients # every client
+        chosen_clients = random.sample(self.clients, self.per_round_clients)
+        return chosen_clients
 
     def add_client(self, ip: str, port: int, client_id: str) -> int:
         if len(self.clients) >= self.max_clients:
@@ -244,11 +254,11 @@ def serve():
     fedlearn_grpc_binds.add_apiServicer_to_server(
         FederatedLearningServer(
             epochs=1,
-            min_clients=2,
+            min_clients=4,
             max_clients=4,
             per_round_clients=2,
             max_rounds=5,
-            accuracy_threshold=90,
+            accuracy_threshold=0.98,
         ),
         server,
     )

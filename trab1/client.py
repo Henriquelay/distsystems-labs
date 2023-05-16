@@ -1,8 +1,9 @@
 from concurrent import futures
 from typing import List, Union, Tuple
+import pickle
 
 import argparse
-import fedlearn_grcp
+import fedlearn_grpc
 import fedlearn_grpc_binds
 import grpc
 import numpy as np
@@ -47,6 +48,15 @@ class FederatedLearningClient(fedlearn_grpc_binds.clientServicer):
         self.start = 0
         self.end = 0
 
+
+    def serialize_weights(self, weights):
+        serialized_weights = pickle.dumps(weights)
+        return serialized_weights
+
+    def deserialize_weights(self, serialized_weights):
+        weights = pickle.loads(serialized_weights)
+        return weights
+
     def normalize_dataset(
         self,
         x_train,
@@ -81,11 +91,11 @@ class FederatedLearningClient(fedlearn_grpc_binds.clientServicer):
 
         self.original_weight_shape = weights_list[0].shape
 
-        weights_bytes_list = [np.array(weights).tobytes() for weights in weights_list]
+        weights_bytes_list = [self.serialize_weights(weights_list)]
 
         num_samples = self.x_train[self.start : self.end].shape[0]
 
-        return fedlearn_grcp.TrainingStartResponse(
+        return fedlearn_grpc.TrainingStartResponse(
             weights=weights_bytes_list, num_samples=num_samples
         )
 
@@ -93,18 +103,12 @@ class FederatedLearningClient(fedlearn_grpc_binds.clientServicer):
         print("Received Evaluation Request")
         aggregated_weights = request.aggregated_weights
 
-        original_shape = self.original_weight_shape
-
-        received_weights_list = []
-        for weights_bytes in aggregated_weights:
-            weights_array = np.frombuffer(weights_bytes, dtype=np.float32)
-            reshaped_weights = weights_array.reshape(original_shape)
-            received_weights_list.append(reshaped_weights)
+        received_weights_list = self.deserialize_weights(aggregated_weights[0])
         
 
         accuracy = self.evaluate(received_weights_list)
         print(f"Client {self.client_id} - Accuracy: {accuracy}")
-        return fedlearn_grcp.ModelEvaluationResponse(accuracy=accuracy)
+        return fedlearn_grpc.ModelEvaluationResponse(accuracy=accuracy)
 
     def fit(self):
         self.model.fit(
@@ -166,7 +170,7 @@ def main() -> None:
         clientGrpc.start()
 
         response = stub.ClientRegister(
-            fedlearn_grcp.ClientRegisterRequest(
+            fedlearn_grpc.ClientRegisterRequest(
                 ip=client.ip, port=client.port, client_id=client.client_id
             )
         )
