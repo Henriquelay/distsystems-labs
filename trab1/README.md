@@ -60,9 +60,7 @@ O servidor (FederatedLearningServer) implementa a lógica central do Federated L
 
 - **TrainingStart**: O cliente chama esta API para iniciar o treinamento. Ele fornece o índice inicial e final do lote de dados que ele deve usar, bem como o número de épocas de treinamento. O servidor responde com os pesos atuais do modelo e o número de amostras no lote.
 
-- \*\*ModelEvaluation
-
-\*\*: Esta API é chamada pelo cliente para avaliar seu modelo usando os pesos fornecidos pelo servidor. O cliente retorna a precisão da avaliação para o servidor.
+- **ModelEvaluation**: Esta API é chamada pelo cliente para avaliar seu modelo usando os pesos fornecidos pelo servidor. O cliente retorna a precisão da avaliação para o servidor.
 
 ## Grupo
 
