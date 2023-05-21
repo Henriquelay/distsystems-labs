@@ -1,4 +1,8 @@
-# Readme: Executando o código de Federated Learning
+# Aprendizado Federado
+
+Este trabalho foi desenvolvido por Henrique Coutinho Layber e Renan Moreira Gomes.
+
+##  o código de Federated Learning
 
 Este repositório contém o código para uma implementação básica de Federated Learning usando gRPC (Google Remote Procedure Call) em Python. Consiste em um servidor (server.py) e um cliente (client.py), que se comunicam por meio de mensagens definidas em um arquivo .proto.
 
@@ -62,6 +66,4 @@ O servidor (FederatedLearningServer) implementa a lógica central do Federated L
 
 - **ModelEvaluation**: Esta API é chamada pelo cliente para avaliar seu modelo usando os pesos fornecidos pelo servidor. O cliente retorna a precisão da avaliação para o servidor.
 
-## Grupo
 
-Este trabalho foi desenvolvido por Henrique Coutinho Layber e Renan Moreira Gomes.
