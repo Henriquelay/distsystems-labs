@@ -11,6 +11,13 @@ import tensorflow as tf
 import threading
 import time
 
+import os
+import warnings
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+tf.get_logger().setLevel("ERROR")
+warnings.filterwarnings("ignore")
+
 
 class Client:
     def __init__(
@@ -31,7 +38,6 @@ class Client:
         channel = grpc.insecure_channel(self.ip + ":" + str(self.port))
         self.stub = fedlearn_grpc_binds.clientStub(channel)
 
-
     def serialize_weights(self, weights):
         serialized_weights = pickle.dumps(weights)
         return serialized_weights
@@ -39,7 +45,6 @@ class Client:
     def deserialize_weights(self, serialized_weights):
         weights = pickle.loads(serialized_weights)
         return weights
-
 
     def trainingStart(self):
         request = self.stub.TrainingStart(
@@ -53,23 +58,17 @@ class Client:
         weights_bytes_list = response.weights
 
         received_weights_list = self.deserialize_weights(weights_bytes_list[0])
-        
-        # print("Received weights list: ", received_weights_list)
 
         return received_weights_list, response.num_samples
 
     def modelEvaluation(self, weights: List[np.ndarray]):
         try:
-            #for i, weight in enumerate(weights):
-            #    print(f"Weight {i} type from client {self.client_id}: ", type(weight))
-                # print("Weight: ", weight)
-            #    print(f"Weight {i} shape from client {self.client_id}: ", weight.shape)
             aggregated_weights_bytes = [self.serialize_weights(weights)]
 
             print("Sending evaluation request to client: ", self.client_id)
 
             request = fedlearn_grpc.ModelEvaluationRequest(
-                    aggregated_weights=aggregated_weights_bytes
+                aggregated_weights=aggregated_weights_bytes
             )
 
             print("Received evaluation response from client: ", self.client_id)
@@ -78,7 +77,6 @@ class Client:
 
             return response.accuracy
         except Exception as e:
-            print(e)
             exit()
 
     def connect(self):
@@ -121,17 +119,11 @@ class FederatedLearningServer(fedlearn_grpc_binds.apiServicer):
             if self.has_sufficient_clients():
                 self.split_dataset(self.clients)
 
-                threads = []
                 results = self.clients_work_now()
                 x, y = zip(*results)
 
-                # print(f"Weights: {y} x: {x}")
-
                 self.last_aggregated_weights = self.federated_average(x, y)
 
-                # print("Aggregated weights: ", self.last_aggregated_weights)
-
-                print("Before evaluation")
                 results = self.clients_evaluate_now()
                 print("Evaluation results: ", results)
 
@@ -140,13 +132,13 @@ class FederatedLearningServer(fedlearn_grpc_binds.apiServicer):
 
                 if average_accuracy >= self.accuracy_threshold:
                     print("Accuracy threshold reached.")
-                    break
+                    exit(0)
 
                 self.current_round += 1
 
                 if self.current_round >= self.max_rounds:
                     print("Max rounds reached.")
-                    break
+                    exit(0)
 
             time.sleep(0.1)
 
@@ -156,7 +148,8 @@ class FederatedLearningServer(fedlearn_grpc_binds.apiServicer):
 
         for client in self.clients:
             thread = threading.Thread(
-                target=self.execute_model_evaluation, args=(client, results, self.last_aggregated_weights)
+                target=self.execute_model_evaluation,
+                args=(client, results, self.last_aggregated_weights),
             )
             threads.append(thread)
             thread.start()
@@ -181,7 +174,7 @@ class FederatedLearningServer(fedlearn_grpc_binds.apiServicer):
             thread.join()
 
         print("All clients finished training.")
-        # print(results)
+
         return results
 
     def execute_training_start(self, client: Client, results: List):
@@ -189,15 +182,14 @@ class FederatedLearningServer(fedlearn_grpc_binds.apiServicer):
         print(f"Client {client.client_id} finished training.")
         results.append((weights, num_samples))
 
-    def execute_model_evaluation(
-        self, client: Client, results: List, weights
-    ):
+    def execute_model_evaluation(self, client: Client, results: List, weights):
         accuracy = client.modelEvaluation(weights)
         results.append(accuracy)
 
-
     def federated_average(self, weights_list, num_samples_list):
-        weighted_average = np.average(weights_list, axis=0, weights=num_samples_list).astype(object)
+        weighted_average = np.average(
+            weights_list, axis=0, weights=num_samples_list
+        ).astype(object)
 
         return weighted_average
 
@@ -255,7 +247,7 @@ def serve():
         FederatedLearningServer(
             epochs=1,
             min_clients=4,
-            max_clients=4,
+            max_clients=5,
             per_round_clients=2,
             max_rounds=5,
             accuracy_threshold=0.98,

@@ -11,6 +11,14 @@ import random
 import tensorflow as tf
 import uuid
 
+import os
+import warnings
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+tf.get_logger().setLevel("ERROR")
+warnings.filterwarnings("ignore")  
+
+
 uuid1 = uuid.uuid1()
 client_id = str(uuid1.int >> 96)
 
@@ -47,7 +55,6 @@ class FederatedLearningClient(fedlearn_grpc_binds.clientServicer):
         )
         self.start = 0
         self.end = 0
-
 
     def serialize_weights(self, weights):
         serialized_weights = pickle.dumps(weights)
@@ -87,8 +94,6 @@ class FederatedLearningClient(fedlearn_grpc_binds.clientServicer):
 
         weights_list = self.model.get_weights()
 
-        print(f"Client {self.client_id} - Weights: {weights_list}")
-
         self.original_weight_shape = weights_list[0].shape
 
         weights_bytes_list = [self.serialize_weights(weights_list)]
@@ -104,7 +109,6 @@ class FederatedLearningClient(fedlearn_grpc_binds.clientServicer):
         aggregated_weights = request.aggregated_weights
 
         received_weights_list = self.deserialize_weights(aggregated_weights[0])
-        
 
         accuracy = self.evaluate(received_weights_list)
         print(f"Client {self.client_id} - Accuracy: {accuracy}")
