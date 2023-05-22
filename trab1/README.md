@@ -2,7 +2,7 @@
 
 Este trabalho foi desenvolvido por Henrique Coutinho Layber e Renan Moreira Gomes.
 
-##  o código de Federated Learning
+## O código de Federated Learning
 
 Este repositório contém o código para uma implementação básica de Federated Learning usando gRPC (Google Remote Procedure Call) em Python. Consiste em um servidor (server.py) e um cliente (client.py), que se comunicam por meio de mensagens definidas em um arquivo .proto.
 
@@ -10,18 +10,25 @@ Este repositório contém o código para uma implementação básica de Federate
 
 Certifique-se de ter instalado os seguintes requisitos antes de executar o código:
 
-- Python 3.x
-- TensorFlow
-- gRPC
+- python >=3.10, <3.11
+- Poetry
+
+## Instalando as dependências
+
+Na raiz do projeto, apenas execute
+
+```shell
+poetry install
+```
 
 ## Executando o servidor
 
 1. Abra um terminal e navegue até o diretório onde o arquivo server.py está localizado.
 2. Execute o seguinte comando para iniciar o servidor:
 
-   ```
-   python server.py
-   ```
+```shell
+poetry run python server.py
+```
 
    O servidor começará a ouvir em [::]:8080.
 
@@ -30,15 +37,15 @@ Certifique-se de ter instalado os seguintes requisitos antes de executar o códi
 1. Abra outro terminal e navegue até o diretório onde o arquivo client.py está localizado.
 2. Execute o seguinte comando para iniciar o cliente:
 
-   ```
-   python client.py
-   ```
+```shell
+poetry run python client.py
+```
 
    O cliente se conectará ao servidor no endereço 127.0.0.1:8080 por padrão. Se desejar usar um endereço ou porta diferentes, você pode especificá-los como argumentos de linha de comando:
 
-   ```
-   python client.py --server <endereço_do_servidor:porta> --address <endereço_do_cliente> --port <porta_do_cliente>
-   ```
+```shell
+python client.py --server <endereço_do_servidor:porta> --address <endereço_do_cliente> --port <porta_do_cliente>
+```
 
    Certifique-se de que o cliente e o servidor estejam sendo executados simultaneamente para estabelecer a comunicação correta.
 
@@ -65,5 +72,3 @@ O servidor (FederatedLearningServer) implementa a lógica central do Federated L
 - **TrainingStart**: O cliente chama esta API para iniciar o treinamento. Ele fornece o índice inicial e final do lote de dados que ele deve usar, bem como o número de épocas de treinamento. O servidor responde com os pesos atuais do modelo e o número de amostras no lote.
 
 - **ModelEvaluation**: Esta API é chamada pelo cliente para avaliar seu modelo usando os pesos fornecidos pelo servidor. O cliente retorna a precisão da avaliação para o servidor.
-
-
