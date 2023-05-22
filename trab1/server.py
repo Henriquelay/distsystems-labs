@@ -1,22 +1,24 @@
 from concurrent import futures
 from typing import List, Union, Tuple
 import pickle
-
-import fedlearn_grpc
-import fedlearn_grpc_binds
 import grpc
 import numpy as np
 import random
 import tensorflow as tf
 import threading
 import time
-
+import matplotlib.pyplot as plt
 import os
 import warnings
+
+import fedlearn_grpc_binds
+import fedlearn_grpc
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
+
+accuracies = []
 
 
 class Client:
@@ -112,11 +114,11 @@ class FederatedLearningServer(fedlearn_grpc_binds.apiServicer):
         self.last_aggregated_weights = np.array([])
 
         self.main_thread = threading.Thread(target=self.train)
-        self.main_thread.start()
 
     def train(self) -> None:
         while True:
             if self.has_sufficient_clients():
+                print(f"Current round: {self.current_round + 1}")
                 self.split_dataset(self.clients)
 
                 results = self.clients_work_now()
@@ -130,15 +132,18 @@ class FederatedLearningServer(fedlearn_grpc_binds.apiServicer):
                 average_accuracy = np.mean(results)
                 print(f"Average accuracy: {average_accuracy}")
 
+                # append the accuracy to global accuracy list
+                accuracies.append(average_accuracy)
+
                 if average_accuracy >= self.accuracy_threshold:
                     print("Accuracy threshold reached.")
-                    exit(0)
+                    return
 
                 self.current_round += 1
 
                 if self.current_round >= self.max_rounds:
                     print("Max rounds reached.")
-                    exit(0)
+                    return
 
             time.sleep(0.1)
 
@@ -213,6 +218,7 @@ class FederatedLearningServer(fedlearn_grpc_binds.apiServicer):
             raise ValueError("There are not enough clients to choose from.")
 
         chosen_clients = random.sample(self.clients, self.per_round_clients)
+        print(f"Chosen clients: {[client.client_id for client in chosen_clients]}")
         return chosen_clients
 
     def add_client(self, ip: str, port: int, client_id: str) -> int:
@@ -243,20 +249,30 @@ def serve():
         ("grpc.max_receive_message_length", 500 * 1024 * 1024),  # 100 MB
     ]
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=4), options=options)
-    fedlearn_grpc_binds.add_apiServicer_to_server(
-        FederatedLearningServer(
+    aggregator = FederatedLearningServer(
             epochs=1,
             min_clients=4,
             max_clients=5,
             per_round_clients=2,
             max_rounds=5,
-            accuracy_threshold=0.98,
-        ),
+            accuracy_threshold=0.99,
+        )
+    fedlearn_grpc_binds.add_apiServicer_to_server(
+        aggregator,
         server,
     )
     server.add_insecure_port("[::]:8080")
+    aggregator.main_thread.start()
     server.start()
-    server.wait_for_termination()
+    aggregator.main_thread.join()
+    server.stop(3.0)
+
+    # plot global accuracy list
+    plt.plot(accuracies)
+    plt.xlabel("Round")
+    plt.ylabel("Accuracy")
+    plt.title("Accuracy vs Round using Federated Averaging")
+    plt.show()
 
 
 if __name__ == "__main__":
