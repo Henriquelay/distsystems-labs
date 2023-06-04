@@ -1,0 +1,9 @@
+# Turn this into a compose service 
+
+services:
+  emqx:
+    image: emqx
+    ports:
+      - 18083:18083
+      - 1883:1883
+    restart: unless-stopped
