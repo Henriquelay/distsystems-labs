@@ -11,6 +11,7 @@ from mine import mine
 challenges_topic: Final[str] = "sd/challenge"
 results_topic: Final[str] = "sd/result"
 
+
 def on_connect(client: mqttClient, userdata, flags, rc: int):
     print("Connected with result code " + str(rc))
     client.subscribe(challenges_topic)
@@ -30,6 +31,7 @@ def on_message(client: mqttClient, userdata, msg: MQTTMessage):
             target=handle_result, args=(client, userdata, msg)
         )
         result_thread.start()
+
 
 def handle_challenge(client: mqttClient, userdata, msg: MQTTMessage):
     print(f"challenge received: {msg.payload}")

@@ -120,7 +120,7 @@ class LodgeCoinServicer:
                 return 1
 
 
-def serve():
+def server():
     client = mqtt.Client()
     broker_address = args.server.split(":")[0]
     broker_port = int(args.server.split(":")[1])
@@ -138,6 +138,3 @@ def serve():
             exit(0)
         else:
             print("Invalid choice")
-
-
-serve()
