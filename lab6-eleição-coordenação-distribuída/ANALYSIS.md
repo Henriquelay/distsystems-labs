@@ -1,0 +1,9 @@
+# Analysis
+
+The introduction of a decentralized election system brings several advantages over the old model based on a central server that created cryptographic challenges for customers to solve. Let's look at these advantages related to topology and removing inactive participants:
+
+The decentralization of the election system provides a number of significant benefits. First, the distribution of decision-making power among participants is one of the main advantages. There is no longer a single centralized entity controlling the entire process. Instead, autonomy and responsibility are shared among participants, which results in greater transparency and equity.
+
+Another advantage is the reduction of single points of failure. In the previous model, if the central server failed, the entire system would be affected. However, in a decentralized system, the network is made up of several independent nodes. This means that, even if a node presents problems, the others can continue operating, guaranteeing the continuity of the electoral process.
+
+The proposed improvement of removing inactive participants after three consecutive rounds without solution submission is a valid approach to ensure an environment of active participation in the network. This is especially relevant when we consider participants with low computational power. By removing inactive participants, it is possible to optimize the use of available resources, directing them to those who are effectively engaged and actively contributing to solutions to cryptographic challenges. However, it is crucial to establish a fair and transparent process for identifying and removing these participants in order to prevent any form of abuse or unfair exclusion. In this way, the system can maintain its efficiency and promote an engaged and equitable participation among all community members.
