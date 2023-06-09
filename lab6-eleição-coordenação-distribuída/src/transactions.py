@@ -72,7 +72,10 @@ class ResultTransaction:
 
         loaded = loads(json)
         return cls(
-            loaded.ClientID, loaded.TransactionID, loaded.Solution, loaded.Result
+            loaded["ClientID"],
+            loaded["TransactionID"],
+            loaded["Solution"],
+            loaded["Result"],
         )
 
 
@@ -108,7 +111,7 @@ class ChallengeTransaction:
         from json import loads
 
         loaded = loads(json)
-        return cls(loaded.TransactionID, loaded.Challenge)
+        return cls(loaded["TransactionID"], loaded["Challenge"])
 
 
 class SolutionTransaction:
@@ -142,9 +145,7 @@ class SolutionTransaction:
         from json import loads
 
         loaded = loads(json)
-        return cls(
-            loaded.ClientID, loaded.TransactionID, loaded.Challenge
-        )
+        return cls(loaded["ClientID"], loaded["TransactionID"], loaded["Solution"])
 
 
 class InitTransaction:
@@ -203,4 +204,4 @@ class VotingTransaction:
         from json import loads
 
         loaded = loads(json)
-        return cls(loaded.ClientID, loaded.VoteID)
+        return cls(loaded["ClientID"], loaded["VoteID"])
