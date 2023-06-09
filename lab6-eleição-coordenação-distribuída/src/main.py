@@ -134,14 +134,14 @@ class Node:
     def handle_result(self, msg: MQTTMessage):
         received = ResultTransaction.from_json(msg.payload)
         self.results[received.transaction_id] = received
-        if received.result != 0:  # Valid solution
+        if bool(received.result):
             self.transactions[received.transaction_id] = received.to_transaction(
-                self.challenges[received.transaction_id]
+                self.challenges[received.transaction_id].challenge
             )
             if received.client_id == self.client_id:
-                print("Ganhei!")
+                print("\033[32m#######Ganhei!#######\033[0m")
             else:
-                print("Perdi :(")
+                print("\033[31m#Perdi :(\033[0m")
             self.state = self.State.WAITING_FOR_ELECTION
             self.handle_election()
 
@@ -150,24 +150,20 @@ class Node:
             return
         received = SolutionTransaction.from_json(msg.payload)
         solution = received.solution
-        if solution == self.solutions[received.transaction_id]:
-            self.client.publish(
-                topics["results"],
-                ResultTransaction(
-                    received.client_id, received.transaction_id, solution, 1
-                ).to_json(),
-            )
-        else:
-            self.client.publish(
-                topics["results"],
-                ResultTransaction(
-                    received.client_id, received.transaction_id, solution, 0
-                ).to_json(),
-            )
+        self.client.publish(
+            topics["results"],
+            ResultTransaction(
+                received.client_id,
+                received.transaction_id,
+                solution,
+                # Checking against locally-saved solution
+                # Every leader should have the solution for the round it is leading
+                int(solution == self.solutions[received.transaction_id]),
+            ).to_json(),
+        )
 
     def handle_challenge(self, msg: MQTTMessage):
         received = ChallengeTransaction.from_json(msg.payload)
-        print(f"Desafio recebido {received.transaction_id}")
         self.challenges[received.transaction_id] = received
         self.transactions[received.transaction_id] = received.to_transaction()
         self.mine(received)
@@ -222,7 +218,7 @@ class Node:
 
             winner = election_results(self.voting)
             if winner == self.client_id:
-                print("Sou o líder!")
+                print("\033[34m#Sou o líder!\033[0m")
                 self.state = self.State.CHALLENGE_LEADER
 
                 # grab a random solution and make it the result, keep it local
@@ -235,7 +231,7 @@ class Node:
                 self.client.publish(topics["challenges"], challenge.to_json())
 
             else:
-                print(f"{winner} é o líder")
+                print(f"#{winner} é o líder")
                 self.state = self.State.CHALLENGE_FOLLOWER
 
     def elect(self) -> VotingTransaction:
@@ -262,7 +258,7 @@ class Node:
                     self.client_id, challenge.transaction_id, solution
                 ).to_json(),
             )
-            sleep(0.01) # Prevents the broker to whine and crash
+            sleep(0.01)  # Prevents the broker to whine and crash
 
 
-Node("localhost:1883", 3).loop_forever()
+Node("localhost:1883", 10).loop_forever()

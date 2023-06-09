@@ -51,14 +51,14 @@ class ResultTransaction:
 
         return dumps(
             {
-                "ClientID": self.transaction_id,
+                "ClientID": self.client_id,
                 "TransactionID": self.transaction_id,
                 "Solution": self.solution,
                 "Result": self.result,
             }
         )
 
-    def to_transaction(self, challenge) -> Transaction:
+    def to_transaction(self, challenge: int) -> Transaction:
         """Converts a resulttransaction to a transaction"""
         winner = -1
         if self.result != 0:
