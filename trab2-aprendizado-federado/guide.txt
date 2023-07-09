@@ -1,0 +1,37 @@
+(InitMsg): publicada pelo cliente
+que está entrando no processo para os todos os outros
+clientes, passando o seu ID único;
+
+(ElectionMsg): publicada pelos
+clientes contendo seu ID único e um número gerado
+aleatoriamente como seu voto. Cada cliente deverá esperar
+todos os outros clientes enviarem a mensagem de eleição e
+então o cliente com maior voto é eleito como cliente eleito
+agregador daquele round. Use a soma ID único + voto para
+desempates;
+
+(TrainingMsg): publicada
+pelo agregador para os demais clientes, passando uma lista
+com o ID único dos clientes escolhidos para aquele round de
+treinamento;
+
+(RoundMsg): publicada pelos
+clientes treinadores ao agregador, enviando os pesos do
+modelo local e a quantidade de amostras da base de dados
+local usadas no treinamento;
+
+(AggregationMsg): publicada pelo
+agregador com os pesos agregados para todos os clientes
+registrados, mesmo para aqueles que não foram escolhidos
+para o processo de treinamento;
+
+(EvaluationMsg): publicada por
+todos os clientes, mesmo aqueles que não foram escolhidos
+para o processo de treinamento, para o cliente eleito
+agregador passando os resultados das métricas
+encontradas.
+
+(FinishMsg): Caso a meta de
+acurácia tenha sido atingida, o cliente eleito agregador deve
+publicar uma mensagem para os clientes treinadores
+indicando a parada do processo de treinamento.

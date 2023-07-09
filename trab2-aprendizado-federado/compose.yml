@@ -1,0 +1,10 @@
+version: '3'
+services:
+  emqx:
+    image: emqx
+    ports:
+      - 18083:18083
+      - 1883:1883
+    environment:
+      - EMQX_MQTT__MAX_PACKET_SIZE=1000000000000
+    restart: unless-stopped
