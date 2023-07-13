@@ -36,7 +36,7 @@ Na terceira e última execução, ampliamos ainda mais o número máximo de roun
 
 ![Gráfico de Acurácia - Execução 3](995.png)
 
-Em todas as execuções, observamos um aumento consistente na acurácia à medida que o número de rounds aumentava. Esses resultados demonstram a capacidade do modelo de aprender e se adaptar ao dataset MNIST, alcançando metas de acurácia cada vez mais altas.
+Em todas as execuções, observamos um aumento consistente na acurácia à medida que o número de rounds aumentava. Esses resultados demonstram a capacidade do modelo de aprender e se adaptar ao dataset MNIST, alcançando metas de acurácia cada vez mais altas, até atingir um máximo local.
 
 ## Sobre o programa
 
