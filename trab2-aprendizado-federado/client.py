@@ -99,6 +99,44 @@ class Primordial:
         random_client = random.choice(self.clients)
         self.mqtt_client.publish("fl/ElectionMsg", json.dumps({"id": random_client}))
 
+    def aggregator_job(self):
+        self.chosen = self.aggregator.choose_clients()
+        self.aggregator.new_round()
+        self.mqtt_client.publish("fl/TrainingMsg", json.dumps({"clients": self.chosen}))
+
+    def trainer_job(self, left, right, epochs, actual_round):
+        weights, num_samples = self.trainer.train(left, right, epochs, actual_round)
+        print("Trained, sending weights to aggregator")
+
+        serialized_weights = serialize_weights(weights)
+
+        encoded_weights = encode_base64(serialized_weights)
+
+        self.mqtt_client.publish(
+            "fl/RoundMsg",
+            json.dumps({"weights": encoded_weights, "samples": num_samples}),
+        )
+
+        print("Sent, waiting for aggregation to evaluate")
+
+        self.state = State.IDLE
+
+    def evaluation_job(self, serialized_weights):
+        accuracy = self.trainer.evaluate_aggregated(serialized_weights)
+        print(f"Evaluated, accuracy: {accuracy}")
+        self.mqtt_client.publish("fl/EvaluationMsg", json.dumps({"accuracy": accuracy}))
+        self.state = State.IDLE
+        print(f"I am idle, waiting for {self.elected}")
+
+    def find_elected(self):
+        counts = Counter(self.votes)
+        max_freq = max(counts.values())
+        most_frequent = [
+            element for element, count in counts.items() if count == max_freq
+        ]
+        most_frequent.sort()
+        return most_frequent[-1]
+
     def handle_init_msg(self, msg):
         if msg["id"] == self.client_id:
             return
@@ -133,28 +171,6 @@ class Primordial:
                 else:
                     self.state = State.IDLE
                     print(f"I am idle, waiting for {self.elected}")
-
-    def aggregator_job(self):
-        self.chosen = self.aggregator.choose_clients()
-        self.aggregator.new_round()
-        self.mqtt_client.publish("fl/TrainingMsg", json.dumps({"clients": self.chosen}))
-
-    def trainer_job(self, left, right, epochs, actual_round):
-        weights, num_samples = self.trainer.train(left, right, epochs, actual_round)
-        print("Trained, sending weights to aggregator")
-
-        serialized_weights = serialize_weights(weights)
-
-        encoded_weights = encode_base64(serialized_weights)
-
-        self.mqtt_client.publish(
-            "fl/RoundMsg",
-            json.dumps({"weights": encoded_weights, "samples": num_samples}),
-        )
-
-        print("Sent, waiting for aggregation to evaluate")
-
-        self.state = State.IDLE
 
     def handle_round_msg(self, msg):
         if self.state == State.AGGREGATOR:
@@ -263,22 +279,6 @@ class Primordial:
         self.state = State.EXITING
         print("Exiting")
         exit(0)
-
-    def evaluation_job(self, serialized_weights):
-        accuracy = self.trainer.evaluate_aggregated(serialized_weights)
-        print(f"Evaluated, accuracy: {accuracy}")
-        self.mqtt_client.publish("fl/EvaluationMsg", json.dumps({"accuracy": accuracy}))
-        self.state = State.IDLE
-        print(f"I am idle, waiting for {self.elected}")
-
-    def find_elected(self):
-        counts = Counter(self.votes)
-        max_freq = max(counts.values())
-        most_frequent = [
-            element for element, count in counts.items() if count == max_freq
-        ]
-        most_frequent.sort()
-        return most_frequent[-1]
 
     def on_message(self, client, userdata, msg):
         desserialized_msg = json.loads(msg.payload)
