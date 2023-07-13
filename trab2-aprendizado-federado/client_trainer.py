@@ -9,6 +9,7 @@ class ClientTrainer:
     def __init__(self, client_id: str):
         self.client_id: str = client_id
         self.setup_defaults()
+        self.actual_round: int = 0
         # self.thread = threading.Thread(target=self.start)
 
     def setup_defaults(self) -> None:
@@ -63,7 +64,6 @@ class ClientTrainer:
     def evaluate_aggregated(self, aggregated_weights):
         deserialized_weights = deserialize_weights(aggregated_weights)
         accuracy = self.evaluate(deserialized_weights)
-        print(f"Accuracy: {accuracy}")
         return accuracy
 
     def fit(self):
@@ -75,16 +75,18 @@ class ClientTrainer:
 
     def evaluate(self, weights):
         self.model.set_weights(weights)
-        right = random.randint(len(self.x_test) // 2, len(self.x_test))
-        left = random.randint(0, right)
+        dataset_size = len(self.x_test)
+        sample_size = int(0.6 * dataset_size)
+        left = random.randint(0, dataset_size - sample_size)
+        right = left + sample_size
         _, accuracy = self.model.evaluate(self.x_test[left:right], self.y_test[left:right])
-        print(f"Accuracy: {accuracy}")
         return accuracy
 
-    def train(self, left, right, epochs):
+    def train(self, left, right, epochs, round):
         self.start = left
         self.end = right
         self.epochs = epochs
+        self.actual_round = round
         self.fit()
         weights = self.model.get_weights()
         num_samples = right - left

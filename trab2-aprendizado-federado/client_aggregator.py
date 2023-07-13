@@ -4,8 +4,18 @@ from typing import List, Union, Tuple
 from serialization import serialize_weights, deserialize_weights
 import tensorflow as tf
 
+
 class ClientAggregator:
-    def __init__(self, epochs: int, min_clients: int, max_clients: int, per_round_clients: int, max_rounds: int, accuracy_threshold: float):
+    def __init__(
+        self,
+        epochs: int,
+        min_clients: int,
+        max_clients: int,
+        per_round_clients: int,
+        max_rounds: int,
+        accuracy_threshold: float,
+    ):
+        self.actual_round: int = 0
         self.epochs: int = epochs
         self.min_clients: int = min_clients
         self.max_clients: int = max_clients
@@ -16,9 +26,21 @@ class ClientAggregator:
         self.clients: List = []
         self.dataset: tuple = tf.keras.datasets.mnist.load_data()
 
+    def get_round(self) -> int:
+        return self.actual_round
+
+    def new_round(self):
+        self.actual_round += 1
+
+    def has_reached_max_rounds(self) -> bool:
+        return self.actual_round >= self.max_rounds
+
+    def has_reached_accuracy_threshold(self, accuracy: float) -> bool:
+        return accuracy >= self.accuracy_threshold
+
     def load_clients(self, clients: List):
         self.clients = clients
-    
+
     def has_sufficient_clients(self) -> bool:
         return len(self.clients) >= self.min_clients
 
@@ -35,8 +57,9 @@ class ClientAggregator:
 
         chosen = random.sample(self.clients, self.per_round_clients)
         print(f"Chosen clients: {[client for client in chosen]}")
+
         return chosen
-    
+
     def split_dataset(self, clients):
         (x_train, y_train), (x_test, y_test) = self.dataset
         num_clients: int = len(clients)
@@ -52,4 +75,3 @@ class ClientAggregator:
             edges.append((left, right))
 
         return edges
-    

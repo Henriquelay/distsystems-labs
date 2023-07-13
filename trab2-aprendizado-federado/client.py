@@ -14,9 +14,18 @@ import paho.mqtt.client as mqtt
 
 from client_trainer import ClientTrainer
 from client_aggregator import ClientAggregator
-from serialization import serialize_weights, deserialize_weights, encode_base64, decode_base64
+from serialization import (
+    serialize_weights,
+    deserialize_weights,
+    encode_base64,
+    decode_base64,
+)
 
 from enum import Enum
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime
 
 
 class State(Enum):
@@ -26,6 +35,7 @@ class State(Enum):
     TRAINER = 4
     IDLE = 5
     EVALUATING = 6
+    EXITING = 7
 
 
 class Primordial:
@@ -66,10 +76,13 @@ class Primordial:
         self.weigths_list = []
         self.num_samples_list = []
         self.chosen = []
-        
+
+        self.accuracy_list = []
+
+        self.accuracy_history = []
+
         self.setup_broker_connection(mqtt_server)
         self.mqtt_client.loop_forever()
-
 
     def setup_broker_connection(self, mqtt_server):
         self.mqtt_client = mqtt.Client()
@@ -89,12 +102,15 @@ class Primordial:
     def handle_init_msg(self, msg):
         if msg["id"] == self.client_id:
             return
-        
+
         if msg["id"] not in self.clients:
             self.clients.append(msg["id"])
             self.mqtt_client.publish("fl/InitMsg", json.dumps({"id": self.client_id}))
 
-        if len(self.clients) == self.min_clients and self.state == State.WAITING_CLIENTS:
+        if (
+            len(self.clients) == self.min_clients
+            and self.state == State.WAITING_CLIENTS
+        ):
             self.state = State.WAITING_ELECTION
             self.elect_leader()
 
@@ -117,13 +133,14 @@ class Primordial:
                 else:
                     self.state = State.IDLE
                     print(f"I am idle, waiting for {self.elected}")
-    
+
     def aggregator_job(self):
         self.chosen = self.aggregator.choose_clients()
+        self.aggregator.new_round()
         self.mqtt_client.publish("fl/TrainingMsg", json.dumps({"clients": self.chosen}))
 
-    def trainer_job(self, left, right, epochs):
-        weights, num_samples = self.trainer.train(left, right, epochs)
+    def trainer_job(self, left, right, epochs, actual_round):
+        weights, num_samples = self.trainer.train(left, right, epochs, actual_round)
         print("Trained, sending weights to aggregator")
 
         serialized_weights = serialize_weights(weights)
@@ -138,9 +155,9 @@ class Primordial:
         print("Sent, waiting for aggregation to evaluate")
 
         self.state = State.IDLE
-    
+
     def handle_round_msg(self, msg):
-        if (self.state == State.AGGREGATOR):
+        if self.state == State.AGGREGATOR:
             encoded_weights = msg["weights"]
             serialized_weights = decode_base64(encoded_weights)
             num_samples = msg["samples"]
@@ -148,43 +165,111 @@ class Primordial:
 
             self.weigths_list.append(desserialized_weights)
             self.num_samples_list.append(num_samples)
-            print(f"Weights received, current status: {len(self.weigths_list)}/{len(self.chosen)}")
+            print(
+                f"Weights received, current status: {len(self.weigths_list)}/{len(self.chosen)}"
+            )
 
-            if (len(self.weigths_list) == len(self.chosen)):
-                weighted_average = self.aggregator.federated_average(self.weigths_list, self.num_samples_list)
+            if len(self.weigths_list) == len(self.chosen):
+                weighted_average = self.aggregator.federated_average(
+                    self.weigths_list, self.num_samples_list
+                )
                 serialized_weigthted_average = serialize_weights(weighted_average)
                 encoded_weigthted_average = encode_base64(serialized_weigthted_average)
 
-                self.mqtt_client.publish("fl/AggregationMsg", json.dumps({"weights": encoded_weigthted_average}))
+                self.mqtt_client.publish(
+                    "fl/AggregationMsg",
+                    json.dumps({"weights": encoded_weigthted_average}),
+                )
                 self.weigths_list = []
                 self.num_samples_list = []
         else:
-            print("Igoring round message, I am idle")
+            print("Ignoring round message, I am idle")
 
     def handle_training_msg(self, msg):
-        if (self.state == State.IDLE):
+        if self.state == State.IDLE:
             clients = msg["clients"]
-            if (self.client_id in clients):
+            if self.client_id in clients:
                 self.state = State.TRAINER
                 index = clients.index(self.client_id)
                 print("I am a trainer at index", index)
                 edges = self.aggregator.split_dataset(clients)[index]
                 print(f"I will train on edges {edges}")
-                self.trainer_job(edges[0], edges[1], self.epochs)
+                actual_round = self.aggregator.get_round()
+                self.trainer_job(edges[0], edges[1], self.epochs, actual_round)
             else:
                 print("I am idle, but not a trainer, waiting for evaluation call")
-    
+
     def handle_aggregation_msg(self, msg):
-        if (self.state == State.IDLE):
+        if self.state == State.IDLE:
             print("I am evaluator, evaluating")
             self.state = State.EVALUATING
             encoded_weights = msg["weights"]
             serialized_weights = decode_base64(encoded_weights)
             self.evaluation_job(serialized_weights)
 
+    def handle_evaluation_msg(self, msg):
+        if self.state == State.AGGREGATOR:
+            accuracy = msg["accuracy"]
+            self.accuracy_list.append(accuracy)
+            if len(self.accuracy_list) == len(self.clients) - 1:
+                mean_accuracy = sum(self.accuracy_list) / len(self.accuracy_list)
+
+                print(f"Mean accuracy: {mean_accuracy}")
+
+                self.accuracy_history.append(mean_accuracy)
+
+                if self.aggregator.has_reached_max_rounds():
+                    self.mqtt_client.publish(
+                        "fl/FinishMsg", json.dumps({"id": self.client_id})
+                    )
+                    print("Reached max rounds, stopping")
+                    return
+
+                if self.aggregator.has_reached_accuracy_threshold(mean_accuracy):
+                    self.mqtt_client.publish(
+                        "fl/FinishMsg", json.dumps({"id": self.client_id})
+                    )
+                    print("Reached accuracy threshold, stopping")
+                    return
+
+                clients = self.clients.copy()
+                clients.remove(self.client_id)
+                self.aggregator.load_clients(clients)
+                self.accuracy_list = []
+                self.aggregator_job()
+
+    def handle_finish_msg(self, msg):
+        if self.state == State.AGGREGATOR:
+            df = pd.DataFrame(
+                {
+                    "Acurácia": self.accuracy_history,
+                    "Round": range(1, len(self.accuracy_history) + 1),
+                }
+            )
+
+            df.plot(x="Round", y="Acurácia", marker="o")
+            plt.xlabel("Round")
+            plt.ylabel("Acurácia")
+            plt.title(
+                f"Acurácia por round - {self.aggregator.get_round()} rounds - {self.accuracy_threshold * 100}% de threshold de acurácia"
+            )
+
+            current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M")
+            nome_arquivo = f"grafico_{current_datetime}.png"
+            plt.savefig(nome_arquivo)
+
+        id = msg["id"]
+        print(f"Client {id} sent finish message")
+        self.state = State.EXITING
+        print("Exiting")
+        exit(0)
+
     def evaluation_job(self, serialized_weights):
         accuracy = self.trainer.evaluate_aggregated(serialized_weights)
         print(f"Evaluated, accuracy: {accuracy}")
+        self.mqtt_client.publish("fl/EvaluationMsg", json.dumps({"accuracy": accuracy}))
+        self.state = State.IDLE
+        print(f"I am idle, waiting for {self.elected}")
 
     def find_elected(self):
         counts = Counter(self.votes)
@@ -207,7 +292,10 @@ class Primordial:
             self.handle_round_msg(desserialized_msg)
         if msg.topic == "fl/AggregationMsg":
             self.handle_aggregation_msg(desserialized_msg)
-
+        if msg.topic == "fl/EvaluationMsg":
+            self.handle_evaluation_msg(desserialized_msg)
+        if msg.topic == "fl/FinishMsg":
+            self.handle_finish_msg(desserialized_msg)
 
     def on_connect(self, client, userdata, flags, rc):
         if State.WAITING_CLIENTS:
@@ -235,8 +323,8 @@ def main() -> None:
     per_round_clients = 3
     min_clients = 5
     max_clients = 8
-    max_rounds = 3
-    accuracy_threshold = 90.0
+    max_rounds = 30
+    accuracy_threshold = 0.995
 
     primordial = Primordial(
         mqtt_server,
