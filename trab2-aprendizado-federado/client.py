@@ -193,8 +193,8 @@ class Primordial:
                 index = clients.index(self.client_id)
                 print("I am a trainer at index", index)
                 edges = self.aggregator.split_dataset(clients)[index]
-                print(f"I will train on edges {edges}")
                 actual_round = self.aggregator.get_round()
+                print(f"I will train on edges {edges} in round {actual_round}")
                 self.trainer_job(edges[0], edges[1], self.epochs, actual_round)
             else:
                 print("I am idle, but not a trainer, waiting for evaluation call")
@@ -323,8 +323,8 @@ def main() -> None:
     per_round_clients = 3
     min_clients = 5
     max_clients = 8
-    max_rounds = 30
-    accuracy_threshold = 0.995
+    max_rounds = 5
+    accuracy_threshold = 0.98
 
     primordial = Primordial(
         mqtt_server,
