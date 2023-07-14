@@ -1,5 +1,7 @@
 # Experimento de Acurácia em Diferentes Execuções
 
+# # Henrique Coutinho Layber
+# # Renan Moreira Gomes
 
 O resultado esperado ao utilizar a técnica de aprendizado federado com comunicação baseada em MQTT é exatamente o aumento gradual da acurácia ao longo dos rounds, até atingir um máximo local. 
 
